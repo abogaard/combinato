@@ -6,7 +6,8 @@ from __future__ import absolute_import, print_function, division
 import os
 import numpy as np
 import tables
-from .. import NcsFile, DefaultFilter
+import matplotlib.pyplot as plt
+from .. import NcsFile, DefaultFilter, i16File
 
 from scipy.io import loadmat
 
@@ -36,6 +37,29 @@ def read_matfile(fname):
 
     return fdata, atimes, ts
 
+def read_i16file(fname):
+    """
+    read data from an i16 file
+    """
+    sr = 20000;
+    adu2uv = 1250000 / (32768 * 196)  # Intan chip range is 1.25 V per 32768 A/D units with 196 gain.
+
+    fdata = np.fromfile(fname, np.int16, int(20000*60*10))
+    
+    print('Using default sampling rate ({} kHz)'.format(sr/1000.))
+    ts = 1/sr
+    atimes = np.linspace(0, fdata.shape[0]/(sr), fdata.shape[0])
+
+    fdata = fdata * (adu2uv * 10**3)
+    plt.plot(atimes, fdata)
+    plt.axis([2, 3, -100000, 20000])  
+    plt.show()  
+
+    print(atimes.shape, fdata.shape)
+    print(ts)
+
+    return fdata, atimes, ts
+
 
 class ExtractNcsFile(object):
     """
@@ -44,7 +68,7 @@ class ExtractNcsFile(object):
 
     def __init__(self, fname, ref_fname=None):
         self.fname = fname
-        self.ncs_file = NcsFile(fname)
+        self.ncs_file = NcsFile(fname) # class. represents ncs files, allows to read data and time (defaults.nlxio)
         self.ref_file = ref_fname
         if ref_fname is not None:
             self.ref_file = NcsFile(ref_fname)
@@ -55,7 +79,7 @@ class ExtractNcsFile(object):
                                    SAMPLES_PER_REC * stepus,
                                    stepus)
 
-        self.filter = DefaultFilter(self.ncs_file.timestep)
+        self.filter = DefaultFilter(self.ncs_file.timestep) # class. Simple filters for spike extraction
 
     def read(self, start, stop):
         """
@@ -86,6 +110,44 @@ class ExtractNcsFile(object):
         # MUST NOT USE dictionaries here, because they would persist in memory
         return (fdata, atimes, self.ncs_file.timestep)
 
+class Extracti16File(object):
+    """
+    reads data from i16 file
+    """
+
+    def __init__(self, fname, ref_fname=None):
+        self.fname = fname
+        self.i16_file = i16File(fname) # class. represents i16 files, allows to read data and time (defaults.nlxio)
+        self.ref_file = ref_fname
+
+        stepus = self.ncs_file.timestep * 1e6
+
+        self.timerange = np.arange(0,
+                                   SAMPLES_PER_REC * stepus,
+                                   stepus)
+
+        self.filter = DefaultFilter(self.ncs_file.timestep) # class. Simple filters for spike extraction
+
+    def read(self, start, stop):
+        """
+        read data from an i16 file
+        """
+        data, times = self.i16_file.read(start, stop, 'both')
+        fdata = np.array(data).astype(np.float32)
+        # do ad conversion here later
+
+        expected_length = round((fdata.shape[0] - SAMPLES_PER_REC) *
+                                (self.ncs_file.timestep * 1e6))
+
+        err = expected_length - times[-1] + times[0]
+        if err != 0:
+            print("Timestep mismatch in {}"
+                  " between records {} and {}: {:.1f} ms"
+                  .format(self.fname, start, stop, err/1e3))
+
+        atimes = np.hstack([t + self.timerange for t in times])/1e3
+        # MUST NOT USE dictionaries here, because they would persist in memory
+        return (fdata, atimes, self.ncs_file.timestep)
 
 class OutFile(object):
     """

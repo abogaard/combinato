@@ -12,7 +12,7 @@ from scipy.signal import ellip, filtfilt
 DETECT_LOW = 300        # default 300
 DETECT_HIGH = 1000      # default 1000
 EXTRACT_LOW = 300       # default 300
-EXTRACT_HIGH = 3000     # default 3000
+EXTRACT_HIGH = 1500     # default 3000
 
 
 class DefaultFilter(object):

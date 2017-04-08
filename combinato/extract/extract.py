@@ -13,7 +13,7 @@ def get_nrecs(filename):
 def main():
     """standard main function"""
     # standard options
-    nWorkers = 8
+    nWorkers = 8 # was 8
     blocksize = 10000
 
     parser = ArgumentParser(prog='css-extract',
@@ -29,6 +29,8 @@ def main():
                         help='job file contains one filename per row')
     parser.add_argument('--matfile', nargs=1,
                         help='extract data from a matlab file')
+    parser.add_argument('--i16file', nargs=1,
+                        help='extract data from a flat binary file')
     parser.add_argument('--destination', nargs=1,
                         help='folder where spikes should be saved')
     parser.add_argument('--refscheme', nargs=1, type=FileType(mode='r'),
@@ -36,9 +38,9 @@ def main():
     args = parser.parse_args()
 
     if (args.files is None) and (args.matfile is None) and\
-            (args.jobs is None):
+            (args.jobs is None) and (args.i16file is None):
         parser.print_help()
-        print('Supply either files or jobs or matfile.')
+        print('Supply either files or jobs or matfile or binary file.')
         return
 
     if args.destination is not None:
@@ -57,7 +59,19 @@ def main():
         mp_extract(jobs, 1)
         return
 
-    if args.jobs:
+    # special case for I16 file
+    #if args.i16file is not None:
+        #jname = os.path.splitext(os.path.basename(args.i16file[0]))[0]
+        #jobs = [{'name': jname,
+                 #'filename': args.i16file[0],
+                 #'is_i16file': True,
+                 #'count': 0,
+                 #'destination': destination}]
+        #mp_extract(jobs, 1)
+        #return
+
+    # generate file list
+    if args.jobs: # if we give a text file of mutiple files
         with open(args.jobs[0], 'r') as f:
             files = [a.strip() for a in f.readlines()]
         f.close()
@@ -84,13 +98,13 @@ def main():
         else:
             start = 0
 
-        nrecs = get_nrecs(f)
+        nrecs = get_nrecs(f) # get length of file
         if args.stop:
             stop = min(args.stop, nrecs)
         else:
             stop = nrecs
 
-        if stop % blocksize > blocksize/2:
+        if stop % blocksize > blocksize/2: # dont try to read past end of file
             laststart = stop-blocksize
         else:
             laststart = stop
@@ -118,4 +132,4 @@ def main():
             jobs.append(jdict)
 
 
-    mp_extract(jobs, nWorkers)
+    mp_extract(jobs, nWorkers) # recursively go through all these blocks
