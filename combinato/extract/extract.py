@@ -31,6 +31,8 @@ def main():
                         help='extract data from a matlab file')
     parser.add_argument('--i16file', nargs=1,
                         help='extract data from a flat binary file')
+    parser.add_argument('--i16filesr', nargs=1,
+                        help='sampling rate for flat binary file (requires i16file)')
     parser.add_argument('--destination', nargs=1,
                         help='folder where spikes should be saved')
     parser.add_argument('--refscheme', nargs=1, type=FileType(mode='r'),
@@ -76,8 +78,12 @@ def main():
             files = [a.strip() for a in f.readlines()]
         f.close()
         print('Read jobs from ' + args.jobs[0])
+    elif args.i16file:
+        files = args.i16file
     else:
         files = args.files
+
+    print(files)
 
     if files[0] is None:
         print('Specify files!')
@@ -97,8 +103,8 @@ def main():
             start = args.start
         else:
             start = 0
-
-        nrecs = get_nrecs(f) # get length of file
+        nrecs = 1000000 # cheat. later look up length of file here if not ncs file
+        #nrecs = get_nrecs(f) # get length of file
         if args.stop:
             stop = min(args.stop, nrecs)
         else:
@@ -108,6 +114,11 @@ def main():
             laststart = stop-blocksize
         else:
             laststart = stop
+
+        if args.i16filesr:
+            i16filesr = args.i16filesr
+        else:
+            i16filesr = 20000
 
         starts = range(start, laststart, blocksize)
         stops = starts[1:] + [stop]
@@ -127,7 +138,8 @@ def main():
                      'stop': stops[i],
                      'count': i,
                      'destination': destination,
-                     'reference': reference}
+                     'reference': reference,
+                     'i16filesr': i16filesr}
 
             jobs.append(jdict)
 

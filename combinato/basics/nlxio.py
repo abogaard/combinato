@@ -65,7 +65,7 @@ class NcsFile(object):
     def __init__(self, filename):
         self.file = None
         self.filename = filename
-        self.num_recs = ncs_num_recs(filename)
+        self.num_recs = ncs_num_recs(filename) # theoretical number of samples
         self.header = ncs_info(filename)
         self.file = open(filename, 'rb')
         if self.num_recs > 0:

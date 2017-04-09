@@ -7,7 +7,8 @@ import os
 import numpy as np
 import tables
 import matplotlib.pyplot as plt
-from .. import NcsFile, DefaultFilter, i16File
+from .. import NcsFile, DefaultFilter
+from .. import i16File
 
 from scipy.io import loadmat
 
@@ -37,7 +38,7 @@ def read_matfile(fname):
 
     return fdata, atimes, ts
 
-def read_i16file(fname):
+def read_i16file(fname): # first pass at reading i16 files. works, but must be small
     """
     read data from an i16 file
     """
@@ -115,29 +116,32 @@ class Extracti16File(object):
     reads data from i16 file
     """
 
-    def __init__(self, fname, ref_fname=None):
+    def __init__(self, fname, sr, ref_fname=None):
         self.fname = fname
-        self.i16_file = i16File(fname) # class. represents i16 files, allows to read data and time (defaults.nlxio)
+        self.i16_file = i16File(fname, sr) # class. represents i16 files, allows to read data and time (defaults.nlxio)
         self.ref_file = ref_fname
 
-        stepus = self.ncs_file.timestep * 1e6
+        stepus = self.i16_file.timestep * 1e6
 
         self.timerange = np.arange(0,
                                    SAMPLES_PER_REC * stepus,
                                    stepus)
 
-        self.filter = DefaultFilter(self.ncs_file.timestep) # class. Simple filters for spike extraction
+        self.filter = DefaultFilter(self.i16_file.timestep) # class. Simple filters for spike extraction
 
     def read(self, start, stop):
         """
         read data from an i16 file
         """
+        print(start)
+        print(stop)
         data, times = self.i16_file.read(start, stop, 'both')
         fdata = np.array(data).astype(np.float32)
-        # do ad conversion here later
+        adu2uv = 1250 / (32768 * 196)  # Intan chip range is 1.25 V per 32768 A/D units with 196 gain.
+        fdata *= adu2uv
 
-        expected_length = round((fdata.shape[0] - SAMPLES_PER_REC) *
-                                (self.ncs_file.timestep * 1e6))
+        expected_length = round((fdata.shape[0]) *
+                                (self.i16_file.timestep * 1e6))
 
         err = expected_length - times[-1] + times[0]
         if err != 0:
@@ -147,7 +151,7 @@ class Extracti16File(object):
 
         atimes = np.hstack([t + self.timerange for t in times])/1e3
         # MUST NOT USE dictionaries here, because they would persist in memory
-        return (fdata, atimes, self.ncs_file.timestep)
+        return (fdata, atimes, self.i16_file.timestep)
 
 class OutFile(object):
     """

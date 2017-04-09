@@ -4,7 +4,7 @@ from __future__ import absolute_import, print_function, division
 from collections import defaultdict
 from multiprocessing import Process, Queue, Value
 from .. import DefaultFilter
-from .tools import ExtractNcsFile, OutFile, read_matfile, read_i16file
+from .tools import ExtractNcsFile, Extracti16File, OutFile, read_matfile, read_i16file
 from .extract_spikes import extract_spikes
 
 
@@ -110,9 +110,9 @@ def read(jobs, q):
                 #print('Reading from i16file ' + fname)
                 #data = read_i16file(fname)
                 #job.update(filename='data_' + jname + '.h5')
-        elif 'is_i16file' in job.keys():
+        elif job['filename'][-3:]=='i16':
             if jname not in openfiles:
-                openfiles[jname] = ExtractNcFile(job['filename'], job['reference'])
+                openfiles[jname] = Extracti16File(job['filename'], job['i16filesr'], job['reference'])
 
             print('Read {} {: 7d} {: 7d}'.format(jname, job['start'], job['stop']))
             data = openfiles[jname].read(job['start'], job['stop'])
