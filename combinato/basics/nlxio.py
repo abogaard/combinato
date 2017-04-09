@@ -58,44 +58,6 @@ def nev_string_read(filename):
     return np.array([eventmap['timestamp'], eventmap['ev_string']]).T
 
 
-class i16File(object):
-    """
-    represents i16 files, allows to read data and time
-    """
-    def __init__(self, filename):
-        self.file = None
-        self.filename = filename
-        #self.num_recs = ncs_num_recs(filename)
-        #self.header = ncs_info(filename)
-        self.file = open(filename, 'rb')
-
-    def __del__(self):
-        if self.file is not None:
-            self.file.close()
-
-    def read(self, start=0, stop=None, mode='data'):
-        """
-        read data, timestamps, or info fields from ncs file
-        """
-        if stop > start:
-            length = stop - start
-        else:
-            length = 1
-        if start + length > self.num_recs + 1:
-            raise IOError("Request to read beyond EOF,"
-                          "filename %s, start %i, stop %i" %
-                          (self.filename, start, stop))
-        else:
-            self.file.seek(start)
-            data = self.file.read(length)
-            array_length = int(len(data))
-            array_data = np.ndarray(array_length, np.int16, data)
-            if mode == 'both':
-                atimes = np.linspace(start/sr, stop/sr, data.shape[0]) # generate timestamps
-                return (data,atimes)
-            #elif mode in ('data', 'timestamp', 'info'):
-                #return array_data[mode].flatten()
-
 class NcsFile(object):
     """
     represents ncs files, allows to read data and time
